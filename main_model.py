@@ -57,6 +57,7 @@ class CSDI_base(nn.Module):
         rand_for_mask = torch.rand_like(observed_mask) * observed_mask
         rand_for_mask = rand_for_mask.reshape(len(rand_for_mask), -1)
         for i in range(len(observed_mask)):
+            #扣数据
             sample_ratio = np.random.rand()  # missing ratio
             num_observed = observed_mask[i].sum().item()
             num_masked = round(num_observed * sample_ratio)
@@ -122,14 +123,19 @@ class CSDI_base(nn.Module):
         else:
             t = torch.randint(0, self.num_steps, [B]).to(self.device)
         current_alpha = self.alpha_torch[t]  # (B,1,1)
+        #生成整块的噪声
         noise = torch.randn_like(observed_data)
+        #整块的加噪
         noisy_data = (current_alpha ** 0.5) * observed_data + (1.0 - current_alpha) ** 0.5 * noise
-
+        #拼接两部分 ground truth + condition
         total_input = self.set_input_to_diffmodel(noisy_data, observed_data, cond_mask)
+
 
         predicted = self.diffmodel(total_input, side_info, t)  # (B,K,L)
 
+        # Mco cond_mask
         target_mask = observed_mask - cond_mask
+        #target_mask  mta
         residual = (noise - predicted) * target_mask
         num_eval = target_mask.sum()
         loss = (residual ** 2).sum() / (num_eval if num_eval > 0 else 1)
@@ -139,7 +145,9 @@ class CSDI_base(nn.Module):
         if self.is_unconditional == True:
             total_input = noisy_data.unsqueeze(1)  # (B,1,K,L)
         else:
+            #条件块
             cond_obs = (cond_mask * observed_data).unsqueeze(1)
+            #噪声块  ground truth
             noisy_target = ((1 - cond_mask) * noisy_data).unsqueeze(1)
             total_input = torch.cat([cond_obs, noisy_target], dim=1)  # (B,2,K,L)
 
@@ -202,6 +210,7 @@ class CSDI_base(nn.Module):
                 observed_mask, for_pattern_mask=for_pattern_mask
             )
         else:
+            #对观测数据随便遮掩
             cond_mask = self.get_randmask(observed_mask)
 
         side_info = self.get_side_info(observed_tp, cond_mask)
@@ -234,7 +243,7 @@ class CSDI_base(nn.Module):
 
 
 class CSDI_PM25(CSDI_base):
-    def __init__(self, config, device, target_dim=36):
+    def  __init__(self, config, device, target_dim=36):
         super(CSDI_PM25, self).__init__(target_dim, config, device)
 
     def process_data(self, batch):

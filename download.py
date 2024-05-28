@@ -20,8 +20,8 @@ elif sys.argv[1] == "pm25":
     filename = "data/STMVL-Release.zip"
     with open(filename, mode="wb") as f:
         f.write(urlData)
-    with zipfile.ZipFile(filename) as z:
-        z.extractall("data/pm25")
+    # with zipfile.ZipFile(filename) as z:
+    #     z.extractall("data/pm25")
         
     def create_normalizer_pm25():
         df = pd.read_csv(

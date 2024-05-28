@@ -24,47 +24,50 @@ parser.add_argument("--unconditional", action="store_true")
 
 args = parser.parse_args()
 print(args)
+if __name__ == '__main__':
 
-path = "config/" + args.config
-with open(path, "r") as f:
-    config = yaml.safe_load(f)
+    path = "config/" + args.config
+    with open(path, "r") as f:
+        config = yaml.safe_load(f)
 
-config["model"]["is_unconditional"] = args.unconditional
-config["model"]["target_strategy"] = args.targetstrategy
+    config["model"]["is_unconditional"] = args.unconditional
+    config["model"]["target_strategy"] = args.targetstrategy
 
-print(json.dumps(config, indent=4))
+    print(json.dumps(config, indent=4))
 
-current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S") 
-foldername = (
-    "./save/pm25_validationindex" + str(args.validationindex) + "_" + current_time + "/"
-)
+    current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    foldername = (
+        "./save/pm25_validationindex" + str(args.validationindex) + "_" + current_time + "/"
+    )
 
-print('model folder:', foldername)
-os.makedirs(foldername, exist_ok=True)
-with open(foldername + "config.json", "w") as f:
-    json.dump(config, f, indent=4)
+    print('model folder:', foldername)
+    os.makedirs(foldername, exist_ok=True)
+    with open(foldername + "config.json", "w") as f:
+        json.dump(config, f, indent=4)
 
-train_loader, valid_loader, test_loader, scaler, mean_scaler = get_dataloader(
-    config["train"]["batch_size"], device=args.device, validindex=args.validationindex
-)
-model = CSDI_PM25(config, args.device).to(args.device)
+    train_loader, valid_loader, test_loader, scaler, mean_scaler = get_dataloader(
+        config["train"]["batch_size"], device=args.device, validindex=args.validationindex
+    )
+    model = CSDI_PM25(config, args.device).to(args.device)
 
-if args.modelfolder == "":
-    train(
+    if args.modelfolder == "":
+        train(
+            model,
+            config["train"],
+            train_loader,
+            valid_loader=valid_loader,
+            foldername=foldername,
+        )
+    else:
+        model.load_state_dict(torch.load("./save/" + args.modelfolder + "/model.pth"))
+
+    evaluate(
         model,
-        config["train"],
-        train_loader,
-        valid_loader=valid_loader,
+        test_loader,
+        nsample=args.nsample,
+        scaler=scaler,
+        mean_scaler=mean_scaler,
         foldername=foldername,
     )
-else:
-    model.load_state_dict(torch.load("./save/" + args.modelfolder + "/model.pth"))
 
-evaluate(
-    model,
-    test_loader,
-    nsample=args.nsample,
-    scaler=scaler,
-    mean_scaler=mean_scaler,
-    foldername=foldername,
-)
+
